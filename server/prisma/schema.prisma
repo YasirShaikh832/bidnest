@@ -1,0 +1,84 @@
+// BidNest Prisma Schema
+// PostgreSQL with User, Auction, and Bid models
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id               String   @id @default(cuid())
+  email            String   @unique
+  password         String
+  name             String?
+  profileImageUrl  String?
+  emailVerifiedAt  DateTime?
+  emailAlerts      Boolean  @default(false)
+  ratingBuyer      Float    @default(0)
+  ratingSeller     Float    @default(0)
+  darkMode         Boolean  @default(false)
+  themeColor       String   @default("amber")  // amber | blue | green | violet | rose
+  currencyFormat   String   @default("PKR")    // PKR | USD | EUR
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  auctions           Auction[]
+  bids               Bid[]
+  pushSubscriptions  PushSubscription[]
+}
+
+model PushSubscription {
+  id        String   @id @default(cuid())
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model Auction {
+  id               String    @id @default(cuid())
+  title            String
+  description      String?
+  startingPrice    Float
+  currentPrice     Float
+  imageUrl         String?
+  tags             String[]  @default([])
+  type             String    @default("standard") // standard | dutch | reserve
+  expiresAt        DateTime
+  scheduledStartAt DateTime? // when set, status is scheduled until this time
+  status           String    @default("active") // draft | scheduled | active | ended | cancelled
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  bids   Bid[]
+
+  @@index([status, expiresAt])
+  @@index([userId])
+}
+
+model Bid {
+  id        String   @id @default(cuid())
+  amount    Float
+  type      String   @default("standard") // standard | auto | proxy
+  createdAt DateTime @default(now())
+
+  auctionId String
+  auction   Auction  @relation(fields: [auctionId], references: [id], onDelete: Cascade)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([auctionId])
+  @@index([userId])
+}
